@@ -50,11 +50,11 @@
   (when (q/loaded? img)
     (q/image img (* x tile-size) (* y tile-size))))
 
-(defn draw-tile [x y tile-map id tile-size]
+(defn draw-tile [[x y] tile-map id tile-size]
   (let [img (id tile-map)]
     (when (q/loaded? img)
       (q/image img (* x tile-size) (* y tile-size)))))
 
 (defn draw-tiles [coordinates id tile-map tile-size]
-  (doseq [[x y] coordinates]
-    (draw-tile x y tile-map id tile-size)))
+  (doseq [coordinate coordinates]
+    (draw-tile coordinate tile-map id tile-size)))
