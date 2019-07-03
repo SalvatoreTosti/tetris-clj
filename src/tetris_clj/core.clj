@@ -31,10 +31,10 @@
    :t {:tile-id :2 :offsets [[0 0] [1 0] [2 0] [1 -1]]}})
 
 (def directions
-  {:n [0 -1]
-   :s [0 1]
-   :w [-1 0]
-   :e [1 0]})
+  {:up [0 -1]
+   :down [0 1]
+   :left [-1 0]
+   :right [1 0]})
 
 (defn spawn-tetromino [state]
   (if (get-in state [:game :active-tetromino])
@@ -66,7 +66,7 @@
         valid (every? true? (map #(inbounds? (get-in state [:game :size]) %) positions))
         positions-at-bottom (map #(= (second %) (dec (second (get-in state [:game :size])))) positions)
         any-at-bottom (not (every? false? positions-at-bottom))
-        above-frozen-positions (map #(add-vectors (:n directions) %) (get-in state [:game :frozen]))
+        above-frozen-positions (map #(add-vectors (:up directions) %) (get-in state [:game :frozen]))
         touch-frozen (some #(in? above-frozen-positions %) positions)]
     (or touch-frozen any-at-bottom)))
 
@@ -79,7 +79,7 @@
      state))
 
 (defn drop-tetromino [state]
-  (let [state (move-tetromino state :s)]
+  (let [state (move-tetromino state :down)]
     (if (at-bottom? state)
       (freeze-tetromino state)
       state)))
@@ -165,10 +165,10 @@
     (draw-tiles frozen :2 (get-in state [:game :tile-map]))))
 
 (defn move-left-tetromino [state]
-  (move-tetromino state :w))
+  (move-tetromino state :left))
 
 (defn move-right-tetromino [state]
-  (move-tetromino state :e))
+  (move-tetromino state :right))
 
 (defn process-input [state key-information]
   (if (nil? (get-in state [:game :active-tetromino]))
