@@ -25,7 +25,7 @@
 (def tetrominoes
   {:line {:tile-id :2 :offsets [[0 0] [1 0 ] [2 0] [3 0]]}
    :l {:tile-id :2 :offsets [[0 0] [0 -1] [0 -2] [1 -2]]}
-   :s {:tile-id :2 :offsets [[0 0] [0 -1] [1 -1] [2 -1]]}
+   :s {:tile-id :2 :offsets [[0 0] [0 -1] [-1 0] [-1 1]]}
    :z {:tile-id :2 :offsets [[0 0] [0 -1] [1 0] [1 1]]}
    :square {:tile-id :2 :offsets [[0 0] [1 0] [0 -1] [1 -1]]}
    :t {:tile-id :2 :offsets [[0 0] [1 0] [2 0] [1 -1]]}})
@@ -36,13 +36,16 @@
    :w [-1 0]
    :e [1 0]})
 
-
 (defn spawn-tetromino [state]
-  (if (nil? (get-in state [:game :active-tetromino]))
+  (if (get-in state [:game :active-tetromino])
+    state
     (assoc-in state [:game :active-tetromino]
               {:position [1 1]
-               :tetromino (:square tetrominoes)})
-    state)) 
+               :tetromino
+               (-> tetrominoes
+                   keys
+                   rand-nth
+                   tetrominoes)}))) 
 
 (defn- move-tetromino [state dir]
    (let [tetromino (get-in state [:game :active-tetromino])
@@ -153,7 +156,6 @@
     (doseq [x (range width)
             y (range height)]
       (draw-tile x y tile-map :0 16))))
-
 
 (defn draw [state]
   (clear-screen state)
