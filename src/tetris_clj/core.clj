@@ -1,6 +1,7 @@
 (ns tetris-clj.core
     (:use
-        [tetris-clj.sprites :only [load-tile-map draw-tile]])
+      [tetris-clj.sprites :only [load-tile-map draw-tile]]
+      [tetris-clj.utils :only [in? add-vectors inbounds?]])
   (:require [quil.core :as q]
             [quil.middleware :as m])
   (:gen-class))
@@ -10,8 +11,8 @@
   (q/frame-rate 30)
   {:game
    {:last-tick (System/currentTimeMillis)
+    :tick-length 1000 ;;length in miliseconds
     :size [16 16]
-    :tick-length 1000
     :frozen []
     :tile-map (load-tile-map
                 {:filename "resources/monochrome.png"
@@ -35,21 +36,6 @@
    :w [-1 0]
    :e [1 0]})
 
-(defn in?
-  "true if coll contains element"
-  [coll element]
-  (some #(= element %) coll))
-
-(defn add-vectors [a b]
-  [(+ (first a) (first b))
-   (+ (second a) (second b))])
-
-(defn inbounds? [[width height] [x y]]
-      (and
-        (>= x 0)
-        (< x width)
-        (>= y 0)
-        (< y height)))
 
 (defn spawn-tetromino [state]
   (if (nil? (get-in state [:game :active-tetromino]))
@@ -104,15 +90,12 @@
       (count)
       (= width)))
 
-(row-full? [[1,2] [2,2]] 2 1)
-
 (defn clear-row [state y]
    (let [frozen (get-in state [:game :frozen])
          frozen (filter #(not (= y (second %))) frozen)]
      (assoc-in state [:game :frozen] frozen)))
 
 (defn process-row [state width y]
-  (println y (row-full? (get-in state [:game :frozen]) y width))
   (if (row-full? (get-in state [:game :frozen]) y width)
     (clear-row state y)
     state))
@@ -164,13 +147,16 @@
   (doseq [[x y] positions]
     (draw-tile x y tile-map id 16)))
 
-(defn clear-screen [width height tile-map]
-  (doseq [x (range width)
-          y (range height)]
-    (draw-tile x y tile-map :0 16)))
+(defn clear-screen [state]
+  (let [[width height] (get-in state [:game :size])
+        tile-map (get-in state [:game :tile-map])]
+    (doseq [x (range width)
+            y (range height)]
+      (draw-tile x y tile-map :0 16))))
+
 
 (defn draw [state]
-  (clear-screen 32 32 (get-in state [:game :tile-map]))
+  (clear-screen state)
   (let [tetromino (get-in state [:game :active-tetromino])
         frozen (get-in state [:game :frozen])]
     (draw-tetrominoes [tetromino] (get-in state [:game :tile-map]))
@@ -193,7 +179,7 @@
 
 (defn -main []
   (q/defsketch game-sketch
-    :title "game"
+    :title "Tetris"
     :size [256 256]
     :setup setup
     :update quil-update
