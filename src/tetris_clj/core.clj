@@ -10,7 +10,7 @@
   (q/frame-rate 30)
   {:game
    {:last-tick (System/currentTimeMillis)
-    :size [32 32]
+    :size [16 16]
     :tick-length 1000
     :frozen []
     :tile-map (load-tile-map
@@ -35,21 +35,28 @@
    :w [-1 0]
    :e [1 0]})
 
-(defn add-vectors [a b]
-  [(+ (first a) (first b))
-   (+ (second a) (second b))])
-
-(defn spawn-tetromino [state]
-  (if (nil? (get-in state [:game :active-tetromino]))
-    (assoc-in state [:game :active-tetromino]
-              {:position [20 20]
-               :tetromino (:l tetrominoes)})
-    state)) 
-
 (defn in?
   "true if coll contains element"
   [coll element]
   (some #(= element %) coll))
+
+(defn add-vectors [a b]
+  [(+ (first a) (first b))
+   (+ (second a) (second b))])
+
+(defn inbounds? [[width height] [x y]]
+      (and
+        (>= x 0)
+        (< x width)
+        (>= y 0)
+        (< y height)))
+
+(defn spawn-tetromino [state]
+  (if (nil? (get-in state [:game :active-tetromino]))
+    (assoc-in state [:game :active-tetromino]
+              {:position [1 1]
+               :tetromino (:square tetrominoes)})
+    state)) 
 
 (defn- move-tetromino [state dir]
    (let [tetromino (get-in state [:game :active-tetromino])
@@ -71,9 +78,7 @@
         positions-at-bottom (map #(= (second %) (dec (second (get-in state [:game :size])))) positions)
         any-at-bottom (not (every? false? positions-at-bottom))
         above-frozen-positions (map #(add-vectors (:n directions) %) (get-in state [:game :frozen]))
-        touch-frozen (some #(in? above-frozen-positions %) positions)
-        ]
-    (println above-frozen-positions)
+        touch-frozen (some #(in? above-frozen-positions %) positions)]
     (or touch-frozen any-at-bottom)))
 
 (defn freeze-tetromino [state]
@@ -90,10 +95,42 @@
       (freeze-tetromino state)
       state)))
 
+(defn get-row [frozen y]
+  (filter #(= y (second %)) frozen))
+
+(defn row-full? [frozen y width]
+  (-> frozen
+      (get-row y)
+      (count)
+      (= width)))
+
+(row-full? [[1,2] [2,2]] 2 1)
+
+(defn clear-row [state y]
+   (let [frozen (get-in state [:game :frozen])
+         frozen (filter #(not (= y (second %))) frozen)]
+     (assoc-in state [:game :frozen] frozen)))
+
+(defn process-row [state width y]
+  (println y (row-full? (get-in state [:game :frozen]) y width))
+  (if (row-full? (get-in state [:game :frozen]) y width)
+    (clear-row state y)
+    state))
+
+(defn clear-rows-rec [state width counter]
+  (if (zero? counter) state
+    (let [state (process-row state width counter)]
+      (clear-rows-rec state width (dec counter)))))
+
+(defn clear-full-rows [state]
+  (let [[width height] (get-in state [:game :size])]
+    (clear-rows-rec state width height)))
+
 (defn do-tick [state]
   (-> state
       spawn-tetromino
-      drop-tetromino))
+      drop-tetromino
+      clear-full-rows))
 
 (defn tick [state]
    (let [current-time (System/currentTimeMillis)
@@ -102,7 +139,7 @@
         next-tick (+ last-tick tick-length)]
     (if (>= current-time next-tick)
       (-> state
-          (do-tick)
+          do-tick
           (assoc-in [:game :last-tick] current-time))
       state)))
 
@@ -139,13 +176,6 @@
     (draw-tetrominoes [tetromino] (get-in state [:game :tile-map]))
     (draw-tiles frozen :2 (get-in state [:game :tile-map]))))
 
-(defn inbounds? [[width height] [x y]]
-      (and
-        (>= x 0)
-        (< x width)
-        (>= y 0)
-        (< y height)))
-
 (defn move-left-tetromino [state]
   (move-tetromino state :w))
 
@@ -164,8 +194,7 @@
 (defn -main []
   (q/defsketch game-sketch
     :title "game"
-    :size (let [[width height] [512 512]]
-            [width height])
+    :size [256 256]
     :setup setup
     :update quil-update
     :draw draw
