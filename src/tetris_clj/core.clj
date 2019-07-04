@@ -43,18 +43,16 @@
          [[0 0] [1 0] [0 1] [-1 1]]
          [[0 0] [0 1] [-1 0] [-1 -1]]
          [[0 0] [-1 0] [0 -1] [1 -1]]])
-
    :s (make-tetromino
         [[[0 0] [0 -1] [1 0] [1 1]]
          [[0 0] [1 0] [0 1] [-1 1]]
          [[0 0] [0 1] [-1 0] [-1 -1]]
          [[0 0] [-1 0] [0 -1] [1 -1]]])
-
-   :square (make-tetromino
-             [[[0 0] [1 0] [0 -1] [1 -1]]
-              [[0 0] [1 0] [0 -1] [1 -1]]
-              [[0 0] [1 0] [0 -1] [1 -1]]
-              [[0 0] [1 0] [0 -1] [1 -1]]])
+   :o (make-tetromino
+        [[[0 0] [1 0] [0 -1] [1 -1]]
+         [[0 0] [1 0] [0 -1] [1 -1]]
+         [[0 0] [1 0] [0 -1] [1 -1]]
+         [[0 0] [1 0] [0 -1] [1 -1]]])
    :t (make-tetromino
         [[[0 0] [0 1] [-1 0] [1 0]]
          [[0 0] [0 1] [0 -1] [1 0]]
@@ -62,14 +60,14 @@
          [[0 0] [0 1] [0 -1] [-1 0]]])})
 
 (defn rotate-tetromino [state]
-  (let [current-offset (get-in state [:active-tetromino :tetromino :rotation])
+  (let [current-offset (get-in state [:active-tetromino :rotation])
         next-rotation (if (< current-offset 3)
                         (inc current-offset)
                         0)
-        next-offset (nth (get-in state [:active-tetromino :tetromino :rotation-offsets]) next-rotation)]
+        next-offset (nth (get-in state [:active-tetromino :rotation-offsets]) next-rotation)]
     (-> state
-        (assoc-in [:active-tetromino :tetromino :rotation] next-rotation)
-        (assoc-in [:active-tetromino :tetromino :offsets] next-offset))))
+        (assoc-in [:active-tetromino :rotation] next-rotation)
+        (assoc-in [:active-tetromino :offsets] next-offset))))
 
 (def directions
   {:up [0 -1]
@@ -81,16 +79,17 @@
   (if (get-in state [:active-tetromino])
     state
     (assoc-in state [:active-tetromino]
-              {:position [1 1]
-               :tetromino (-> tetrominoes
-                              keys
-                              rand-nth
-                              tetrominoes)})
+              (let [zed (-> tetrominoes
+                            keys
+                            rand-nth
+                            tetrominoes)]
+                (assoc zed :position [8 0]))
+              )
     )) 
 
 (defn get-tetromino-positions [state]
   (let [position (get-in state [:active-tetromino :position])
-        offsets (get-in state [:active-tetromino :tetromino :offsets])]
+        offsets (get-in state [:active-tetromino :offsets])]
     (map #(add-vectors position %) offsets)))
 
 (defn- move-tetromino [state dir]
@@ -118,7 +117,7 @@
 (defn freeze-tetromino [state]
    (let [tetromino (get-in state [:active-tetromino])
          position (get-in tetromino [:position])
-         positions (map #(add-vectors position %) (:offsets (:tetromino tetromino)))]
+         positions (map #(add-vectors position %) (:offsets tetromino))]
      (-> state
          (update-in [:frozen] concat positions)
          (assoc-in [:active-tetromino] nil))))
@@ -172,9 +171,8 @@
 
 (defn tick [state]
    (let [current-time (System/currentTimeMillis)
-         next-tick (+
-                     (get-in state [:last-tick])
-                     (get-in state [:tick-length]))]
+         next-tick (+ (get-in state [:last-tick])
+                      (get-in state [:tick-length]))]
      (if (>= current-time next-tick)
        (-> state
            do-tick
@@ -188,7 +186,7 @@
         (draw-tile
           position
           (get-in state [:tile-map])
-          (get-in state [:active-tetromino :tetromino :tile-id])
+          (get-in state [:active-tetromino :tile-id])
           16)))
 
 (defn draw-frozen-tiles [state]
@@ -200,10 +198,14 @@
 
 (defn clear-screen [state]
   (let [[width height] (get-in state [:size])
-        tile-map (get-in state [ :tile-map])]
-    (doseq [x (range width)
-            y (range height)]
-      (draw-tile [x y] tile-map :0 16))))
+        tiles (for [x (range width)
+                    y (range height)]
+               [x y])]
+        (draw-tiles
+          tiles
+          :0
+          (get-in state [:tile-map])
+          16)))
 
 (defn draw [state]
   (clear-screen state)
