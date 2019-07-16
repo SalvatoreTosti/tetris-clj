@@ -120,14 +120,16 @@
           position
           (get-in game [:tile-map])
           (get-in game [:active-tetromino :tile-id])
-          16)))
+          16
+          (get-in game [:active-tetromino :color]))))
 
 (defn draw-frozen-tiles [game]
   (draw-tiles
     (get-in game [:frozen])
-    :119
     (get-in game [:tile-map])
-    16))
+    :119
+    16
+    :sky-blue))
 
 (defn clear-screen [game]
   (let [[width height] (get-in game [:size])
@@ -136,8 +138,8 @@
                [x y])]
         (draw-tiles
           tiles
-          :0
           (get-in game [:tile-map])
+          :0
           16)))
 
 (defn draw [game]
@@ -166,3 +168,5 @@
     :draw draw
     :key-pressed process-input
     :middleware [m/fun-mode]))
+
+(-main)
