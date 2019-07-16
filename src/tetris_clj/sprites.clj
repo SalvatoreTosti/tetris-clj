@@ -58,3 +58,12 @@
 (defn draw-tiles [coordinates id tile-map tile-size]
   (doseq [coordinate coordinates]
     (draw-tile coordinate tile-map id tile-size)))
+
+(defn load-tiles []
+  (load-tile-map
+    {:filename "resources/monochrome.png"
+     :tile-size 16
+     :columns 32
+     :rows 32
+     :column-spacing-size 1
+     :row-spacing-size 1}))

@@ -1,73 +1,11 @@
 (ns tetris-clj.core
     (:use
-      [tetris-clj.sprites :only [load-tile-map draw-tile draw-tiles]]
-      [tetris-clj.utils :only [in? add-vectors inbounds?]])
+      [tetris-clj.sprites :only [draw-tile draw-tiles load-tiles]]
+      [tetris-clj.utils :only [in? add-vectors inbounds?]]
+      [tetris-clj.tetrominoes :only [rotate-tetromino spawn-tetromino]])
   (:require [quil.core :as q]
             [quil.middleware :as m])
   (:gen-class))
-
-(defn setup []
-  (q/background 0)
-  (q/frame-rate 30)
-   {:last-tick (System/currentTimeMillis)
-    :tick-length 1000 ;;length in miliseconds
-    :size [16 16]
-    :frozen []
-    :tile-map (load-tile-map
-                {:filename "resources/monochrome.png"
-                 :tile-size 16
-                 :columns 32
-                 :rows 32
-                 :column-spacing-size 1
-                 :row-spacing-size 1})})
-
-(defn make-tetromino [offsets]
-  {:tile-id :118
-   :rotation 0
-   :rotation-offsets offsets
-   :offsets (first offsets)})
-
-(def tetrominoes
-  {:l (make-tetromino
-        [[[0 0] [0 1] [1 1] [0 -1]]
-         [[0 0] [-1 0] [-1 1] [1 0]]
-         [[0 0] [0 -1] [-1 -1] [0 1]]
-         [[0 0] [1 0] [1 -1] [-1 0]]])
-   :line (make-tetromino
-        [[[0 0] [-1 0] [-2 0] [1 0]]
-         [[0 0] [0 -1] [0 -2] [0 1]]
-         [[0 0] [1 0] [2 0] [-1 0]]
-         [[0 0] [0 -1] [0 -2] [0 1]]])
-   :z (make-tetromino
-        [[[0 0] [0 -1] [1 0] [1 1]]
-         [[0 0] [1 0] [0 1] [-1 1]]
-         [[0 0] [0 1] [-1 0] [-1 -1]]
-         [[0 0] [-1 0] [0 -1] [1 -1]]])
-   :s (make-tetromino
-        [[[0 0] [0 -1] [1 0] [1 1]]
-         [[0 0] [1 0] [0 1] [-1 1]]
-         [[0 0] [0 1] [-1 0] [-1 -1]]
-         [[0 0] [-1 0] [0 -1] [1 -1]]])
-   :o (make-tetromino
-        [[[0 0] [1 0] [0 -1] [1 -1]]
-         [[0 0] [1 0] [0 -1] [1 -1]]
-         [[0 0] [1 0] [0 -1] [1 -1]]
-         [[0 0] [1 0] [0 -1] [1 -1]]])
-   :t (make-tetromino
-        [[[0 0] [0 1] [-1 0] [1 0]]
-         [[0 0] [0 1] [0 -1] [1 0]]
-         [[0 0] [0 -1] [1 0] [-1 0]]
-         [[0 0] [0 1] [0 -1] [-1 0]]])})
-
-(defn rotate-tetromino [state]
-  (let [current-offset (get-in state [:active-tetromino :rotation])
-        next-rotation (if (< current-offset 3)
-                        (inc current-offset)
-                        0)
-        next-offset (nth (get-in state [:active-tetromino :rotation-offsets]) next-rotation)]
-    (-> state
-        (assoc-in [:active-tetromino :rotation] next-rotation)
-        (assoc-in [:active-tetromino :offsets] next-offset))))
 
 (def directions
   {:up [0 -1]
@@ -75,152 +13,149 @@
    :left [-1 0]
    :right [1 0]})
 
-(defn spawn-tetromino [state]
-  (if (get-in state [:active-tetromino])
-    state
-    (assoc-in state [:active-tetromino]
-              (let [zed (-> tetrominoes
-                            keys
-                            rand-nth
-                            tetrominoes)]
-                (assoc zed :position [8 0]))
-              )
-    )) 
+(defn make-game []
+  {:last-tick (System/currentTimeMillis)
+   :tick-length 500 ;;length in miliseconds
+   :size [16 16]
+   :frozen []
+   :tile-map (load-tiles)})
 
-(defn get-tetromino-positions [state]
-  (let [position (get-in state [:active-tetromino :position])
-        offsets (get-in state [:active-tetromino :offsets])]
+(defn setup []
+  (q/background 0)
+  (q/frame-rate 30)
+  (make-game))
+
+(defn get-active-piece-positions [game]
+  (let [position (get-in game [:active-tetromino :position])
+        offsets (get-in game [:active-tetromino :offsets])]
     (map #(add-vectors position %) offsets)))
 
-(defn- move-tetromino [state dir]
+(defn move-tetromino [game dir]
    (let [dir-vec (dir directions)
-         new-positions (map #(add-vectors dir-vec %) (get-tetromino-positions state))
+         new-positions (map #(add-vectors dir-vec %) (get-active-piece-positions game))
          valid (->>  new-positions
-                     (map #(inbounds? (get-in state [:size]) %) )
+                     (map #(inbounds? (get-in game [:size]) %) )
                      (every? true?))
          touch-frozen (->> new-positions
-                           (map #(in? (get-in state [:frozen]) %))
+                           (map #(in? (get-in game [:frozen]) %))
                            (some true?))]
       (if (and valid (not touch-frozen))
-        (update-in state [:active-tetromino :position] #(add-vectors dir-vec %))
-        state)))
+        (update-in game [:active-tetromino :position] #(add-vectors dir-vec %))
+        game)))
 
-(defn at-bottom? [state]
-  (let [positions (get-tetromino-positions state)
-        valid (every? true? (map #(inbounds? (get-in state [:size]) %) positions))
-        positions-at-bottom (map #(= (second %) (dec (second (get-in state [:size])))) positions)
+(defn at-bottom? [game]
+  (let [positions (get-active-piece-positions game)
+        valid (every? true? (map #(inbounds? (get-in game [:size]) %) positions))
+        positions-at-bottom (map #(= (second %) (dec (second (get-in game [:size])))) positions)
         any-at-bottom (some true? positions-at-bottom)
-        above-frozen-positions (map #(add-vectors (:up directions) %) (get-in state [:frozen]))
+        above-frozen-positions (map #(add-vectors (:up directions) %) (get-in game [:frozen]))
         touch-frozen (some #(in? above-frozen-positions %) positions)]
     (or touch-frozen any-at-bottom)))
 
-(defn freeze-tetromino [state]
-   (let [tetromino (get-in state [:active-tetromino])
+(defn freeze-tetromino [game]
+   (let [tetromino (get-in game [:active-tetromino])
          position (get-in tetromino [:position])
          positions (map #(add-vectors position %) (:offsets tetromino))]
-     (-> state
+     (-> game
          (update-in [:frozen] concat positions)
          (assoc-in [:active-tetromino] nil))))
 
-(defn drop-tetromino [state]
-  (let [state (move-tetromino state :down)]
-    (if (at-bottom? state)
-      (freeze-tetromino state)
-      state)))
+(defn drop-tetromino [game]
+  (let [game (move-tetromino game :down)]
+    (if (at-bottom? game)
+      (freeze-tetromino game)
+      game)))
 
 (defn get-row [frozen y]
   (filter #(= y (second %)) frozen))
 
-(defn row-full? [state row-number]
-  (-> state
+(defn row-full? [game row-number]
+  (-> game
       (get-in [:frozen])
       (get-row row-number)
       count
-      (= (first (get-in state [:size])))))
+      (= (first (get-in game [:size])))))
 
-(defn clear-row [state y]
-  (let [frozen (get-in state [:frozen])
+(defn clear-row [game y]
+  (let [frozen (get-in game [:frozen])
         upper-half (filter #(> y (second %)) frozen)
         lower-half (filter #(< y (second %)) frozen)
         upper-half (map #(add-vectors (:down directions) %) upper-half)]
   (->> (concat upper-half lower-half)
-       (assoc-in state [:frozen]))))
+       (assoc-in game [:frozen]))))
 
-(defn process-row [state width row-number]
-  (if (row-full? state row-number)
-    (-> (clear-row state row-number)
+(defn process-row [game width row-number]
+  (if (row-full? game row-number)
+    (-> game
+        (clear-row row-number)
         (process-row width row-number))
-    state))
+    game))
 
-(defn clear-full-rows [state]
-  (let [[width height] (get-in state [:size])]
-    (loop [state state
+(defn clear-full-rows [game]
+  (let [[width height] (get-in game [:size])]
+    (loop [game game
            width width
            counter height]
           (if (zero? counter)
-            state
-            (-> state
+            game
+            (-> game
                 (process-row width counter)
                 (recur width (dec counter)))))))
 
-(defn do-tick [state]
-  (-> state
-      spawn-tetromino
-      drop-tetromino
-      clear-full-rows))
+(defn quil-update [game]
+  (let [current-time (System/currentTimeMillis)
+         next-tick (+ (get-in game [:last-tick])
+                      (get-in game [:tick-length]))]
+     (if (< current-time next-tick)
+       game
+       (-> game
+           spawn-tetromino
+           drop-tetromino
+           clear-full-rows
+           (assoc-in [:last-tick] current-time)))))
 
-(defn tick [state]
-   (let [current-time (System/currentTimeMillis)
-         next-tick (+ (get-in state [:last-tick])
-                      (get-in state [:tick-length]))]
-     (if (>= current-time next-tick)
-       (-> state
-           do-tick
-           (assoc-in [:last-tick] current-time))
-       state)))
-
-(defn quil-update [state] (tick state))
-
-(defn draw-active-tetromino [state]
-    (doseq [position (get-tetromino-positions state)]
+(defn draw-active-piece [game]
+    (doseq [position (get-active-piece-positions game)]
         (draw-tile
           position
-          (get-in state [:tile-map])
-          (get-in state [:active-tetromino :tile-id])
+          (get-in game [:tile-map])
+          (get-in game [:active-tetromino :tile-id])
           16)))
 
-(defn draw-frozen-tiles [state]
+(defn draw-frozen-tiles [game]
   (draw-tiles
-    (get-in state [:frozen])
+    (get-in game [:frozen])
     :119
-    (get-in state [:tile-map])
+    (get-in game [:tile-map])
     16))
 
-(defn clear-screen [state]
-  (let [[width height] (get-in state [:size])
+(defn clear-screen [game]
+  (let [[width height] (get-in game [:size])
         tiles (for [x (range width)
                     y (range height)]
                [x y])]
         (draw-tiles
           tiles
           :0
-          (get-in state [:tile-map])
+          (get-in game [:tile-map])
           16)))
 
-(defn draw [state]
-  (clear-screen state)
-  (draw-active-tetromino state)
-  (draw-frozen-tiles state))
+(defn draw [game]
+  (clear-screen game) ;;make whole screen black
+  (draw-active-piece game) ;;:draw the active piece
+  (draw-frozen-tiles game)) ;;draw all the inactive pieces
 
-(defn process-input [state key-information]
-  (if (nil? (get-in state [:active-tetromino]))
-    state
-    (case (:key key-information)
-      :a (move-tetromino state :left)
-      :d (move-tetromino state :right)
-      :s (drop-tetromino state)
-      :e (rotate-tetromino state)
-      state)))
+(defn process-input [game key-information]
+  (if (nil? (get-in game [:active-tetromino]))
+    game
+    (->
+      (case (:key key-information)
+        :a (move-tetromino game :left)
+        :d (move-tetromino game :right)
+        :s (drop-tetromino game)
+        :e (rotate-tetromino game)
+        game)
+      clear-full-rows)))
 
 (defn -main []
   (q/defsketch game-sketch
@@ -231,5 +166,3 @@
     :draw draw
     :key-pressed process-input
     :middleware [m/fun-mode]))
-
-(-main)
