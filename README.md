@@ -1,36 +1,29 @@
 # tetris-clj
 
-FIXME: description
+Tetris in Clojure! 🕹️
 
-## Installation
+## Getting Started
 
-Download from http://example.com/FIXME.
+1. Clone the project
+2. Run the project via Leiningen using `lein run`.
 
-## Usage
+### Prerequisites
 
-FIXME: explanation
+You need to have [Leiningen](https://leiningen.org/) installed on your machine.
 
-    $ java -jar tetris-clj-0.1.0-standalone.jar [args]
+## Deployment
 
-## Options
+Soon.
 
-FIXME: listing of options this app accepts.
+## Built With
 
-## Examples
+* [Quil](http://quil.info/) - Drawing framework
+* [Kenny.nl 1-Bit Pack](https://www.kenney.nl/assets/bit-pack) - Sprites
 
-...
+## Authors
 
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
+* **Salvatore Tosti** - *Initial work* - [SalvatoreTosti](https://github.com/SalvatoreTosti)
 
 ## License
 
-Copyright © 2019 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+This project is licensed under the Eclipse Public License 1.0 - see the [LICENSE.md](LICENSE.md) file for details
