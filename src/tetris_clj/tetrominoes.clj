@@ -69,4 +69,4 @@
                   keys
                   rand-nth
                   tetrominoes
-                  (assoc :position [8 0])))))
+                  (assoc :position [5 0])))))
