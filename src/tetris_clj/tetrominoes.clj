@@ -1,4 +1,6 @@
-(ns tetris-clj.tetrominoes)
+(ns tetris-clj.tetrominoes
+   (:use
+     [tetris-clj.utils :only [add-vectors inbounds?]]))
 
 (defn make-tetromino [offsets color]
   {:tile-id :118
@@ -51,15 +53,23 @@
          [[0 0] [0 -1] [1 0] [-1 0]]]
          :purple)})
 
+(defn can-rotate? [state next-offsets]
+  (let [position (get-in state [:active-tetromino :position])
+        next-positions (map #(add-vectors position %) next-offsets)
+        next-inbounds (map #(inbounds? (:size state) %) next-positions)]
+    (every? true? next-inbounds)))
+
 (defn rotate-tetromino [state]
   (let [current-offset (get-in state [:active-tetromino :rotation])
         next-rotation (if (< current-offset 3)
                         (inc current-offset)
                         0)
-        next-offset (nth (get-in state [:active-tetromino :rotation-offsets]) next-rotation)]
-    (-> state
-        (assoc-in [:active-tetromino :rotation] next-rotation)
-        (assoc-in [:active-tetromino :offsets] next-offset))))
+        next-offsets (nth (get-in state [:active-tetromino :rotation-offsets]) next-rotation)]
+    (if (not (can-rotate? state next-offsets))
+      state
+      (-> state
+          (assoc-in [:active-tetromino :rotation] next-rotation)
+          (assoc-in [:active-tetromino :offsets] next-offsets)))))
 
 (defn swap-tetromino [state]
   (let [counter (inc (:tetromino-counter state))
