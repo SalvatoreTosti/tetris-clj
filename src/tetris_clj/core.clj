@@ -176,7 +176,7 @@
   (draw-text 11 5 (get-in game [:tile-map]) "Next"))
 
 (defn draw-next-tetromino [game]
-   (doseq [position (get-next-piece-positions game [1 8])]
+   (doseq [position (get-next-piece-positions game [13 8])]
      (draw-tile
       position
       (get-in game [:tile-map])
