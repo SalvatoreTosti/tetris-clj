@@ -136,7 +136,6 @@
    :sky-blue))
 
 (defn clear-screen [game]
-  (println (get-in game [:size]))
   (let [[width height] (get-in game [:size])
         tiles (for [x (range 16)
                     y (range 16)]
@@ -173,6 +172,9 @@
   (let [offsets (get-in game [:next-tetromino :offsets])]
     (map #(add-vectors display-position %) offsets)))
 
+(defn draw-next-text [game]
+  (draw-text 11 5 (get-in game [:tile-map]) "Next"))
+
 (defn draw-next-tetromino [game]
    (doseq [position (get-next-piece-positions game [1 8])]
      (draw-tile
@@ -188,6 +190,7 @@
   (draw-frozen-tiles game) ;;draw all the inactive pieces
   (draw-score game)
   (draw-next-tetromino game)
+  (draw-next-text game)
   (draw-separator game))
 
 (defn process-input [game key-information]
