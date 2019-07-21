@@ -14,7 +14,8 @@
    :right [1 0]})
 
 (defn make-game []
-  {:last-tick (System/currentTimeMillis)
+  {:mode :play
+   :last-tick (System/currentTimeMillis)
    :tick-length 500 ;;length in miliseconds
    :size [10 16]
    :score 0
@@ -106,7 +107,19 @@
             (process-row width counter)
             (recur width (dec counter)))))))
 
-(defn quil-update [game]
+(defn game-state-processing [game]
+  (if (->> game
+       :frozen
+       (map #(second %))
+       (some neg?))
+    (assoc-in game [:mode] :game-over)
+    game))
+
+(defmulti quil-update
+  (fn [game]
+    (:mode game)))
+
+(defmethod quil-update :play [game]
   (let [current-time (System/currentTimeMillis)
         next-tick (+ (get-in game [:last-tick])
                      (get-in game [:tick-length]))]
@@ -115,8 +128,15 @@
       (-> game
           spawn-tetromino
           drop-tetromino
+          game-state-processing
           clear-full-rows
           (assoc-in [:last-tick] current-time)))))
+
+(defmethod quil-update :game-over [game]
+  game)
+
+;; (defn quil-update [game]
+;;   (process-game game))
 
 (defn draw-active-piece [game]
   (doseq [position (get-active-piece-positions game)]
@@ -155,7 +175,6 @@
       string
       (str padding string))))
 
-
 (defn draw-score [game]
   (draw-text 11 0 (get-in game [:tile-map]) "Score")
   (draw-text
@@ -184,7 +203,11 @@
       16
       (get-in game [:next-tetromino :color]))))
 
-(defn draw [game]
+(defmulti draw
+  (fn [game]
+    (:mode game)))
+
+(defmethod draw :play [game]
   (clear-screen game) ;;make whole screen black
   (draw-active-piece game) ;;:draw the active piece
   (draw-frozen-tiles game) ;;draw all the inactive pieces
@@ -193,7 +216,22 @@
   (draw-next-text game)
   (draw-separator game))
 
-(defn process-input [game key-information]
+(defmethod draw :game-over [game]
+  (clear-screen game) ;;make whole screen black
+  (draw-frozen-tiles game) ;;draw all the inactive pieces
+  (draw-score game)
+  (draw-next-tetromino game)
+  (draw-next-text game)
+  (draw-separator game)
+  (draw-text 0 7 (get-in game [:tile-map]) "                ")
+  (draw-text 0 8 (get-in game [:tile-map]) "   game over    ")
+  (draw-text 0 9 (get-in game [:tile-map]) "                "))
+
+(defmulti process-input
+  (fn [game key-information]
+    (:mode game)))
+
+(defmethod process-input :play [game key-information]
   (if (nil? (get-in game [:active-tetromino]))
     game
     (->
@@ -204,6 +242,12 @@
        :e (rotate-tetromino game)
        game)
      clear-full-rows)))
+
+(defmethod process-input :game-over [game key-information]
+  (->
+    (case (:key-code key-information)
+      10 (make-game) ;enter key
+      game)))
 
 (defn -main []
   (q/defsketch game-sketch
