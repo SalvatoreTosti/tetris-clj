@@ -2,7 +2,7 @@
   (:use
    [tetris-clj.sprites :only [draw-tile draw-tiles load-tiles draw-text]]
    [tetris-clj.utils :only [in? add-vectors inbounds?]]
-   [tetris-clj.tetrominoes :only [rotate-tetromino spawn-tetromino]])
+   [tetris-clj.tetrominoes :only [rotate-tetromino spawn-tetromino random-tetromino-sequence]])
   (:require [quil.core :as q]
             [quil.middleware :as m])
   (:gen-class))
@@ -19,6 +19,8 @@
    :size [10 16]
    :score 0
    :frozen []
+   :tetromino-sequence (random-tetromino-sequence)
+   :tetromino-counter 0
    :tile-map (load-tiles)})
 
 (defn setup []
@@ -134,9 +136,10 @@
    :sky-blue))
 
 (defn clear-screen [game]
+  (println (get-in game [:size]))
   (let [[width height] (get-in game [:size])
-        tiles (for [x (range width)
-                    y (range height)]
+        tiles (for [x (range 16)
+                    y (range 16)]
                 [x y])]
     (draw-tiles
      tiles
@@ -166,11 +169,25 @@
   (doseq [y (range (second (:size game)))]
     (draw-tile [10 y] (get-in game [:tile-map]) :54 16 :slate)))
 
+(defn get-next-piece-positions [game display-position]
+  (let [offsets (get-in game [:next-tetromino :offsets])]
+    (map #(add-vectors display-position %) offsets)))
+
+(defn draw-next-tetromino [game]
+   (doseq [position (get-next-piece-positions game [1 8])]
+     (draw-tile
+      position
+      (get-in game [:tile-map])
+      (get-in game [:next-tetromino :tile-id])
+      16
+      (get-in game [:next-tetromino :color]))))
+
 (defn draw [game]
   (clear-screen game) ;;make whole screen black
   (draw-active-piece game) ;;:draw the active piece
   (draw-frozen-tiles game) ;;draw all the inactive pieces
   (draw-score game)
+  (draw-next-tetromino game)
   (draw-separator game))
 
 (defn process-input [game key-information]
@@ -195,4 +212,4 @@
                :key-pressed process-input
                :middleware [m/fun-mode]))
 
-;; (-main)
+(-main)

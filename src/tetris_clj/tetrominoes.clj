@@ -45,13 +45,10 @@
          [[0 0] [1 0] [0 -1] [1 -1]]]
          :yellow)
    :t (make-tetromino
-        [ [[0 0] [0 1] [0 -1] [1 0]]
-          [[0 0] [0 1] [-1 0] [1 0]]
-          [[0 0] [0 1] [0 -1] [-1 0]]
-          [[0 0] [0 -1] [1 0] [-1 0]]
-
-
-           ]
+        [[[0 0] [0 1] [0 -1] [1 0]]
+         [[0 0] [0 1] [-1 0] [1 0]]
+         [[0 0] [0 1] [0 -1] [-1 0]]
+         [[0 0] [0 -1] [1 0] [-1 0]]]
          :purple)})
 
 (defn rotate-tetromino [state]
@@ -64,12 +61,30 @@
         (assoc-in [:active-tetromino :rotation] next-rotation)
         (assoc-in [:active-tetromino :offsets] next-offset))))
 
+(defn swap-tetromino [state]
+  (let [counter (inc (:tetromino-counter state))
+        next-counter (inc counter)
+        tetromino-seq (:tetromino-sequence state)
+        current-tetromino (nth tetromino-seq counter)
+        next-tetromino (nth tetromino-seq next-counter)]
+    (-> state
+        (assoc-in [:active-tetromino] current-tetromino)
+        (assoc-in [:next-tetromino] next-tetromino)
+        (assoc-in [:tetromino-counter] counter))))
+
 (defn spawn-tetromino [state]
   (if (get-in state [:active-tetromino])
     state
-    (assoc-in state [:active-tetromino]
-              (-> tetrominoes
-                  keys
-                  rand-nth
-                  tetrominoes
-                  (assoc :position [5 0])))))
+    (-> state
+        (swap-tetromino)
+        (assoc-in [:active-tetromino :position] [5 0])
+        )))
+
+(defn random-tetromino []
+  (-> tetrominoes
+      keys
+      rand-nth
+      tetrominoes))
+
+(defn random-tetromino-sequence []
+  (repeatedly #(random-tetromino)))
