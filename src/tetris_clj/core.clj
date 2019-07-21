@@ -195,4 +195,4 @@
                :key-pressed process-input
                :middleware [m/fun-mode]))
 
-(-main)
+;; (-main)
