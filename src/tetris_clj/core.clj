@@ -14,6 +14,7 @@
    :right [1 0]})
 
 (defn make-game []
+  "Generates a new game with default start values."
   {:mode :play
    :last-tick (System/currentTimeMillis)
    :tick-length 500 ;;length in miliseconds
@@ -25,16 +26,21 @@
    :tile-map (load-tiles)})
 
 (defn setup []
+  "This function is run one time when sketch starts."
   (q/background 0)
   (q/frame-rate 30)
   (make-game))
 
 (defn get-active-piece-positions [game]
+  "Adds the active tetromino position and offsets.
+   Gives the positions occupied by the active tetromino."
   (let [position (get-in game [:active-tetromino :position])
         offsets (get-in game [:active-tetromino :offsets])]
     (map #(add-vectors position %) offsets)))
 
 (defn move-tetromino [game dir]
+  "Attempts to move the active tetromino.
+   If active any tile positions will be invalid, move is not performed."
   (let [dir-vec (dir directions)
         new-positions (map #(add-vectors dir-vec %) (get-active-piece-positions game))
         valid (->>  new-positions
@@ -48,6 +54,7 @@
       game)))
 
 (defn at-bottom? [game]
+  "Determines if active tetromino is at the bottom or touching frozen positions."
   (let [positions (get-active-piece-positions game)
         valid (every? true? (map #(inbounds? (get-in game [:size]) %) positions))
         positions-at-bottom (map #(= (second %) (dec (second (get-in game [:size])))) positions)
@@ -57,6 +64,7 @@
     (or touch-frozen any-at-bottom)))
 
 (defn freeze-tetromino [game]
+  "Adds active tetromino positions into frozen pool and sets active tetromino to nil."
   (let [tetromino (get-in game [:active-tetromino])
         position (get-in tetromino [:position])
         positions (map #(add-vectors position %) (:offsets tetromino))]
@@ -65,15 +73,19 @@
         (assoc-in [:active-tetromino] nil))))
 
 (defn drop-tetromino [game]
+  "Attempts to move active tetromino down 1 position.
+   If any tile positions will be invalid, move is not performed."
   (let [game (move-tetromino game :down)]
     (if (at-bottom? game)
       (freeze-tetromino game)
       game)))
 
 (defn get-row [frozen y]
+  "Returns list of all items where Y coordinate is equal to the given value."
   (filter #(= y (second %)) frozen))
 
 (defn row-full? [game row-number]
+  "Determines if a given row is filled with frozen tiles."
   (-> game
       (get-in [:frozen])
       (get-row row-number)
@@ -81,6 +93,7 @@
       (= (first (get-in game [:size])))))
 
 (defn clear-row [game y]
+  "Removes a given row from the pool of frozen tiles."
   (let [frozen (get-in game [:frozen])
         upper-half (filter #(> y (second %)) frozen)
         lower-half (filter #(< y (second %)) frozen)
@@ -89,6 +102,7 @@
          (assoc-in game [:frozen]))))
 
 (defn process-row [game width row-number]
+  "Removes given row if it's full of frozen tiles and adds to score accordingly."
   (if (row-full? game row-number)
     (-> game
         (clear-row row-number)
@@ -97,6 +111,7 @@
     game))
 
 (defn clear-full-rows [game]
+  "Removes all full frozen rows."
   (let [[width height] (get-in game [:size])]
     (loop [game game
            width width
@@ -107,7 +122,9 @@
             (process-row width counter)
             (recur width (dec counter)))))))
 
-(defn game-state-processing [game]
+(defn game-over-processing [game]
+  "Determines if the player has lost the game.
+   Changes mode to :game-over when frozen items reach the top of the play area."
   (if (->> game
        :frozen
        (map #(second %))
@@ -128,15 +145,12 @@
       (-> game
           spawn-tetromino
           drop-tetromino
-          game-state-processing
+          game-over-processing
           clear-full-rows
           (assoc-in [:last-tick] current-time)))))
 
 (defmethod quil-update :game-over [game]
   game)
-
-;; (defn quil-update [game]
-;;   (process-game game))
 
 (defn draw-active-piece [game]
   (doseq [position (get-active-piece-positions game)]
@@ -156,6 +170,7 @@
    :sky-blue))
 
 (defn clear-screen [game]
+  "Overwrites entire screen with black."
   (let [[width height] (get-in game [:size])
         tiles (for [x (range 16)
                     y (range 16)]
@@ -167,6 +182,7 @@
      16)))
 
 (defn pad-string-front [string length padding]
+  "Adds padding to given string until it's equal to the given length."
   (let [difference (- length (count string))
         padding (->> (repeat padding)
                      (take difference)
@@ -176,6 +192,7 @@
       (str padding string))))
 
 (defn draw-score [game]
+  "Displays score information."
   (draw-text 11 0 (get-in game [:tile-map]) "Score")
   (draw-text
     11
@@ -184,6 +201,7 @@
     (pad-string-front (str (:score game)) 5 "0")))
 
 (defn draw-separator [game]
+  "Displays play area separator."
   (doseq [y (range (second (:size game)))]
     (draw-tile [10 y] (get-in game [:tile-map]) :54 16 :slate)))
 
@@ -191,10 +209,11 @@
   (let [offsets (get-in game [:next-tetromino :offsets])]
     (map #(add-vectors display-position %) offsets)))
 
-(defn draw-next-text [game]
-  (draw-text 11 5 (get-in game [:tile-map]) "Next"))
+;; (defn draw-next-text [game]
+;;   (draw-text 11 5 (get-in game [:tile-map]) "Next"))
 
 (defn draw-next-tetromino [game]
+  "Draw the next tetromino that will drop."
    (doseq [position (get-next-piece-positions game [13 8])]
      (draw-tile
       position
@@ -208,30 +227,34 @@
     (:mode game)))
 
 (defmethod draw :play [game]
+  "Draw play mode screen."
   (clear-screen game) ;;make whole screen black
   (draw-active-piece game) ;;:draw the active piece
   (draw-frozen-tiles game) ;;draw all the inactive pieces
   (draw-score game)
   (draw-next-tetromino game)
-  (draw-next-text game)
+  (draw-text 11 5 (get-in game [:tile-map]) "Next")
+;;   (draw-next-text game)
   (draw-separator game))
 
 (defmethod draw :game-over [game]
+  "Draw game over screen."
   (clear-screen game) ;;make whole screen black
   (draw-frozen-tiles game) ;;draw all the inactive pieces
   (draw-score game)
   (draw-next-tetromino game)
-  (draw-next-text game)
+  (draw-text 11 5 (get-in game [:tile-map]) "Next")
   (draw-separator game)
-  (draw-text 0 7 (get-in game [:tile-map]) "                ")
-  (draw-text 0 8 (get-in game [:tile-map]) "   game over    ")
-  (draw-text 0 9 (get-in game [:tile-map]) "                "))
+  (draw-text 0 6 (get-in game [:tile-map]) "                ")
+  (draw-text 0 7 (get-in game [:tile-map]) "   game over    ")
+  (draw-text 0 8 (get-in game [:tile-map]) "                "))
 
 (defmulti process-input
   (fn [game key-information]
     (:mode game)))
 
 (defmethod process-input :play [game key-information]
+  "Process input in play status/"
   (if (nil? (get-in game [:active-tetromino]))
     game
     (->
@@ -244,6 +267,7 @@
      clear-full-rows)))
 
 (defmethod process-input :game-over [game key-information]
+  "Process input in game over state."
   (->
     (case (:key-code key-information)
       10 (make-game) ;enter key
@@ -259,4 +283,4 @@
                :key-pressed process-input
                :middleware [m/fun-mode]))
 
-(-main)
+;; (-main)
