@@ -18,10 +18,10 @@
         :pink)
     :j (make-tetromino
         [[[0 0] [1 0] [-1 0] [-1 -1]]
-          [[0 0] [0 1] [0 -1] [1 -1]]
-          [[0 0] [1 0] [-1 0] [1 1]]
-          [[0 0] [0 -1] [0 1] [-1 1]]]
-          :purple)
+         [[0 0] [0 1] [0 -1] [1 -1]]
+         [[0 0] [1 0] [-1 0] [1 1]]
+         [[0 0] [0 -1] [0 1] [-1 1]]]
+         :purple)
    :line (make-tetromino
         [[[0 0] [-1 0] [-2 0] [1 0]]
          [[0 0] [0 -1] [0 -2] [0 1]]
@@ -65,30 +65,25 @@
                         (inc current-offset)
                         0)
         next-offsets (nth (get-in state [:active-tetromino :rotation-offsets]) next-rotation)]
-    (if (not (can-rotate? state next-offsets))
-      state
+    (if (can-rotate? state next-offsets)
       (-> state
           (assoc-in [:active-tetromino :rotation] next-rotation)
-          (assoc-in [:active-tetromino :offsets] next-offsets)))))
+          (assoc-in [:active-tetromino :offsets] next-offsets))
+      state)))
 
 (defn swap-tetromino [state]
-  (let [counter (inc (:tetromino-counter state))
-        next-counter (inc counter)
-        tetromino-seq (:tetromino-sequence state)
-        current-tetromino (nth tetromino-seq counter)
-        next-tetromino (nth tetromino-seq next-counter)]
+  (let [counter (inc (:tetromino-counter state))]
     (-> state
-        (assoc-in [:active-tetromino] current-tetromino)
-        (assoc-in [:next-tetromino] next-tetromino)
+        (assoc-in [:active-tetromino] (nth (:tetromino-sequence state) counter))
+        (assoc-in [:next-tetromino] (nth (:tetromino-sequence state) (inc counter)))
         (assoc-in [:tetromino-counter] counter))))
 
 (defn spawn-tetromino [state]
   (if (get-in state [:active-tetromino])
     state
     (-> state
-        (swap-tetromino)
-        (assoc-in [:active-tetromino :position] [5 0])
-        )))
+        swap-tetromino
+        (assoc-in [:active-tetromino :position] [5 0]))))
 
 (defn random-tetromino []
   (-> tetrominoes
@@ -97,4 +92,4 @@
       tetrominoes))
 
 (defn random-tetromino-sequence []
-  (repeatedly #(random-tetromino)))
+ (repeatedly #(random-tetromino)))
