@@ -153,17 +153,29 @@
    (doseq [coordinate coordinates]
      (draw-tile coordinate tile-map id tile-size color))))
 
-(defn- draw-word-rec [[x y] tile-map ids]
-  (when (not (empty? ids))
-    (do
-      (draw-tile [x y] tile-map (first ids) 16)
-      (draw-word-rec [(inc x) y] tile-map (rest ids)))))
+(defn draw-word-rec
+  ([[x y] tile-map ids]
+   (when (not (empty? ids))
+     (do
+       (draw-tile [x y] tile-map (first ids) 16)
+       (draw-word-rec [(inc x) y] tile-map (rest ids)))))
+  ([[x y] tile-map color ids]
+   (when (not (empty? ids))
+     (do
+       (draw-tile [x y] tile-map (first ids) 16 color)
+       (draw-word-rec [(inc x) y] tile-map color (rest ids))))))
 
-(defn draw-text [x y tile-map word]
-  (->> word
-       (map str)
-       (map character-to-id)
-       (draw-word-rec [x y] tile-map)))
+(defn draw-text
+  ([x y tile-map word]
+   (->> word
+        (map str)
+        (map character-to-id)
+        (draw-word-rec [x y] tile-map)))
+  ([x y tile-map word color]
+   (->> word
+        (map str)
+        (map character-to-id)
+        (draw-word-rec [x y] tile-map color))))
 
 (defn- text-center-start [container-width text]
   (let [container-mid (int (/ container-width 2))

@@ -15,7 +15,7 @@
 
 (defn make-game []
   "Generates a new game with default start values."
-  {:mode :play
+  {:mode :start
    :last-tick (System/currentTimeMillis)
    :tick-length 500 ;;length in miliseconds
    :size [10 16]
@@ -136,6 +136,9 @@
   (fn [game]
     (:mode game)))
 
+(defmethod quil-update :start [game]
+  game)
+
 (defmethod quil-update :play [game]
   (let [current-time (System/currentTimeMillis)
         next-tick (+ (get-in game [:last-tick])
@@ -219,6 +222,19 @@
   (fn [game]
     (:mode game)))
 
+(defmethod draw :start [game]
+  (clear-screen game)
+  (draw-text 0 5 (get-in game [:tile-map]) "                ")
+  (draw-text 4 6 (get-in game [:tile-map]) "t" :red)
+  (draw-text 5 6 (get-in game [:tile-map]) "e" :purple)
+  (draw-text 6 6 (get-in game [:tile-map]) "t" :orange)
+  (draw-text 7 6 (get-in game [:tile-map]) "r" :green)
+  (draw-text 8 6 (get-in game [:tile-map]) "i" :red)
+  (draw-text 9 6 (get-in game [:tile-map]) "s" :yellow)
+  (draw-text 10 6 (get-in game [:tile-map]) "!" :purple)
+  (draw-text 0 7 (get-in game [:tile-map]) "  press enter   ")
+  (draw-text 0 8 (get-in game [:tile-map]) "                "))
+
 (defmethod draw :play [game]
   "Draw play mode screen."
   (clear-screen game) ;;make whole screen black
@@ -237,17 +253,23 @@
   (draw-next-tetromino game)
   (draw-text 11 5 (get-in game [:tile-map]) "Next")
   (draw-separator game)
-  (draw-text 0 6 (get-in game [:tile-map]) "                ")
-  (draw-text 0 7 (get-in game [:tile-map]) "   game over    ")
-  (draw-text 0 8 (get-in game [:tile-map]) "  press enter   ")
-  (draw-text 0 9 (get-in game [:tile-map]) "                "))
+  (draw-text 0 5 (get-in game [:tile-map]) "                ")
+  (draw-text 0 6 (get-in game [:tile-map]) "   game over    " :sky-blue)
+  (draw-text 0 7 (get-in game [:tile-map]) "  press enter   " :sky-blue)
+  (draw-text 0 8 (get-in game [:tile-map]) "                "))
 
 (defmulti process-input
   (fn [game key-information]
     (:mode game)))
 
+(defmethod process-input :start [game key-information]
+  "Process input in start state."
+  (-> (case (:key-code key-information)
+        10 (assoc game :mode :play) ;enter key
+        game)))
+
 (defmethod process-input :play [game key-information]
-  "Process input in play status/"
+  "Process input in play status."
   (if (get-in game [:active-tetromino])
     (-> (case (:key key-information)
           :a (move-tetromino game :left)
