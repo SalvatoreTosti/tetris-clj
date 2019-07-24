@@ -205,16 +205,9 @@
   (doseq [y (range (second (:size game)))]
     (draw-tile [10 y] (get-in game [:tile-map]) :54 16 :slate)))
 
-(defn get-next-piece-positions [game display-position]
-  (let [offsets (get-in game [:next-tetromino :offsets])]
-    (map #(add-vectors display-position %) offsets)))
-
-;; (defn draw-next-text [game]
-;;   (draw-text 11 5 (get-in game [:tile-map]) "Next"))
-
 (defn draw-next-tetromino [game]
   "Draw the next tetromino that will drop."
-   (doseq [position (get-next-piece-positions game [13 8])]
+   (doseq [position (map #(add-vectors [13 8] %) (get-in game [:next-tetromino :offsets]))]
      (draw-tile
       position
       (get-in game [:tile-map])
@@ -234,7 +227,6 @@
   (draw-score game)
   (draw-next-tetromino game)
   (draw-text 11 5 (get-in game [:tile-map]) "Next")
-;;   (draw-next-text game)
   (draw-separator game))
 
 (defmethod draw :game-over [game]
@@ -247,7 +239,8 @@
   (draw-separator game)
   (draw-text 0 6 (get-in game [:tile-map]) "                ")
   (draw-text 0 7 (get-in game [:tile-map]) "   game over    ")
-  (draw-text 0 8 (get-in game [:tile-map]) "                "))
+  (draw-text 0 8 (get-in game [:tile-map]) "  press enter   ")
+  (draw-text 0 9 (get-in game [:tile-map]) "                "))
 
 (defmulti process-input
   (fn [game key-information]
@@ -255,23 +248,21 @@
 
 (defmethod process-input :play [game key-information]
   "Process input in play status/"
-  (if (nil? (get-in game [:active-tetromino]))
-    game
-    (->
-     (case (:key key-information)
-       :a (move-tetromino game :left)
-       :d (move-tetromino game :right)
-       :s (drop-tetromino game)
-       :e (rotate-tetromino game)
-       game)
-     clear-full-rows)))
+  (if (get-in game [:active-tetromino])
+    (-> (case (:key key-information)
+          :a (move-tetromino game :left)
+          :d (move-tetromino game :right)
+          :s (drop-tetromino game)
+          :e (rotate-tetromino game)
+          game)
+        clear-full-rows)
+    game))
 
 (defmethod process-input :game-over [game key-information]
   "Process input in game over state."
-  (->
-    (case (:key-code key-information)
-      10 (make-game) ;enter key
-      game)))
+  (-> (case (:key-code key-information)
+        10 (make-game) ;enter key
+        game)))
 
 (defn -main []
   (q/defsketch game-sketch
