@@ -12,6 +12,7 @@ Tetris in Clojure! 🕹️
 You need to have [Leiningen](https://leiningen.org/) installed on your machine.
 
 ## Controls
+* _enter_ - Start game.
 * _a_ - Moves current piece left.
 * _d_ - Moves current piece right.
 * _s_ - Moves current piece down.
